@@ -3,8 +3,10 @@
 use enum_as_inner::EnumAsInner;
 
 pub mod log;
+pub mod world;
 
 pub use log::Log;
+pub use world::InstanceLog;
 
 #[derive(Debug, EnumAsInner)]
 pub enum LogEnum {
@@ -32,7 +34,7 @@ pub fn from_str(s: &str) -> Result<Vec<LogEnum>, ()> {
 impl LogEnum {
     pub fn from_str(s: &str) -> Result<Self, ()> {
         if s.chars().nth(31) != Some('-') {
-            println!("parse error: {}", s);
+            //println!("parse error: {}", s);
             return Err(());
         }
 
