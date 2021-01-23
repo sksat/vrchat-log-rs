@@ -3,8 +3,13 @@ name = "vrchat-log"
 version = "0.1.0"
 authors = ["sksat <sksat@sksat.net>"]
 edition = "2018"
+license = "MIT"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+categories = ["parsing"]
+keywords = ["vrchat"]
+readme = "README.md"
+description = "VRChat output log parser"
+repository = "https://github.com/sk2sat/vrchat-log-rs"
 
 [dependencies]
 enum-as-inner = "0.3.3"
