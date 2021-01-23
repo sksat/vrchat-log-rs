@@ -1,0 +1,11 @@
+[package]
+name = "vrchat-log"
+version = "0.1.0"
+authors = ["sksat <sksat@sksat.net>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+strum = "0.20.0"
+strum_macros = "0.20.1"
