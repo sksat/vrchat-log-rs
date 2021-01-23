@@ -1,29 +1,24 @@
 /// 2021.01.13 21:22:05 Log        -  [VRCApplicationSetup] System Info:
 /// <-------date------> <type>        <Log::VRCApplicationSetup> <message>
-use std::str::FromStr;
+use enum_as_inner::EnumAsInner;
 
 pub mod log;
 
-#[derive(Debug)]
-pub enum Type {
-    Log(log::Type),
-    Warning,
-    Error,
-    Exception,
+pub use log::Log;
+
+#[derive(Debug, EnumAsInner)]
+pub enum LogEnum {
+    Log(Log),
+    Warning { date: String, msg: Vec<String> },
+    Error { date: String, msg: Vec<String> },
+    Exception { date: String, msg: Vec<String> },
     Unknown(String),
 }
 
-#[derive(Debug)]
-pub struct Log {
-    pub date: String,
-    pub typ: Type,
-    pub msg: Vec<String>,
-}
-
-pub fn from_str(s: &str) -> Result<Vec<Log>, ()> {
-    let mut ret = Vec::<Log>::new();
+pub fn from_str(s: &str) -> Result<Vec<LogEnum>, ()> {
+    let mut ret = Vec::<LogEnum>::new();
     for log in s.split("\n\r\n") {
-        let log = Log::from_str(log);
+        let log = LogEnum::from_str(log);
 
         if let Ok(log) = log {
             //println!("{:?}", log);
@@ -34,7 +29,7 @@ pub fn from_str(s: &str) -> Result<Vec<Log>, ()> {
     Ok(ret)
 }
 
-impl Log {
+impl LogEnum {
     pub fn from_str(s: &str) -> Result<Self, ()> {
         if s.chars().nth(31) != Some('-') {
             println!("parse error: {}", s);
@@ -61,22 +56,13 @@ impl Log {
         msg.retain(|s| !s.is_empty());
         let msg = msg;
 
-        let typ = match typ {
-            &"Log" => {
-                let lt = if let Some(mtyp) = mtyp {
-                    log::Type::from_str(mtyp).unwrap()
-                } else {
-                    log::Type::Message
-                };
-                Type::Log(lt)
-            }
-            &"Warning" => Type::Warning,
-            &"Error" => Type::Error,
-            &"Exception" => Type::Exception,
-            _ => Type::Unknown(typ.to_string()),
+        let log = match typ {
+            &"Log" => LogEnum::Log(Log::new(date, mtyp, msg)),
+            &"Warning" => LogEnum::Warning { date, msg },
+            &"Error" => LogEnum::Error { date, msg },
+            &"Exception" => LogEnum::Exception { date, msg },
+            _ => LogEnum::Unknown(typ.to_string()),
         };
-
-        let log = Log { typ, date, msg };
 
         Ok(log)
     }

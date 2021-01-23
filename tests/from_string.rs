@@ -1,3 +1,5 @@
+use vrchat_log::{log, Log, LogEnum};
+
 #[test]
 fn from_string() {
     let log = "2021.01.22 21:38:25 Warning    -  OvrLipSync Awake: Queried SampleRate: 48000 BufferSize: 1024
@@ -45,5 +47,28 @@ VRC.SDKInternal.SDKWatcher.Start () (at <00000000000000000000000000000000>:0)
 \r
 ";
 
-    let _ = vrchat_log::from_str(log);
+    let log = vrchat_log::from_str(log).unwrap();
+    {
+        let warn = log[0].as_warning().unwrap();
+        assert_eq!(warn.0, "2021.01.22 21:38:25");
+    }
+    {
+        let log = log[1].as_log().unwrap();
+        assert_eq!(log.date, "2021.01.22 21:38:25");
+        assert_eq!(log.typ, log::Type::AssetBundleDownloadManager);
+        assert_eq!(log.msg.len(), 1);
+        assert_eq!(log.msg[0], "Using default cache directory.");
+    }
+    {
+        let log = log[4].as_log().unwrap();
+        assert_eq!(log.date, "2021.01.22 21:38:26");
+        assert_eq!(log.typ, log::Type::Message);
+        assert_eq!(log.msg.len(), 1);
+        assert_eq!(log.msg[0], "OpenVR initialized!");
+    }
+    {
+        let log = log[6].as_log().unwrap();
+        assert_eq!(log.date, "2021.01.22 21:38:26");
+        assert_eq!(log.typ, log::Type::VRCApplicationSetup);
+    }
 }

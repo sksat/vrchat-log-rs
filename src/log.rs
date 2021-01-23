@@ -1,6 +1,25 @@
+use std::str::FromStr;
 use strum_macros::EnumString;
 
-#[derive(Debug, EnumString)]
+#[derive(Debug)]
+pub struct Log {
+    pub date: String,
+    pub typ: Type,
+    pub msg: Vec<String>,
+}
+
+impl Log {
+    pub fn new(date: String, typ: Option<&str>, msg: Vec<String>) -> Self {
+        let typ = if let Some(typ) = typ {
+            Type::from_str(typ).unwrap()
+        } else {
+            Type::Message
+        };
+        Self { date, typ, msg }
+    }
+}
+
+#[derive(PartialEq, Debug, EnumString)]
 pub enum Type {
     #[strum(disabled)]
     Message, // not []
