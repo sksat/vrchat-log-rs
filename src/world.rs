@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use crate::log;
+use crate::DateTime;
 
 #[derive(Debug)]
 pub struct World {
@@ -30,10 +31,11 @@ pub struct Instance {
 #[derive(Debug)]
 pub struct InstanceLog {
     pub instance: Instance,
-    pub enter: Option<String>,
-    pub join: Option<String>,
-    pub join_or_create: Option<String>,
-    pub left: Option<String>,
+    pub enter: Option<DateTime>,
+    pub join: Option<DateTime>,
+    pub join_or_create: Option<DateTime>,
+    pub joined: Option<DateTime>,
+    pub left: Option<DateTime>,
 }
 
 #[derive(Debug)]
@@ -93,7 +95,6 @@ impl From<&Vec<crate::LogEnum>> for InstanceLogList {
         let mut ilog: Option<InstanceLog> = None;
         let mut world_name = None;
         let mut enter = None;
-        let mut left = None;
         loop {
             let l = log.next();
             if l.is_none() {
@@ -115,24 +116,48 @@ impl From<&Vec<crate::LogEnum>> for InstanceLogList {
 
             if let Some(name) = msg.strip_prefix("Entering Room: ") {
                 world_name = Some(name.to_string());
-                enter = Some(l.date.clone());
+                enter = Some(l.date);
                 continue;
             }
             if msg.starts_with("Joining wrld_") {
                 let msg = msg.strip_prefix("Joining ").unwrap();
-                let instance = parse_instance(msg).unwrap();
+                let mut instance = parse_instance(msg).unwrap();
+                if let Some(ref name) = world_name {
+                    instance.world.name = name.to_string();
+                }
                 ilog = Some(InstanceLog {
                     instance,
-                    enter: None,
-                    join: None,
+                    enter,
+                    join: Some(l.date),
                     join_or_create: None,
+                    joined: None,
                     left: None,
                 });
             }
 
+            if let Some(name) = msg.strip_prefix("Joining or Creating Room: ") {
+                if let Some(ref mut ilog) = ilog {
+                    let wn = &mut ilog.instance.world.name;
+                    if wn.is_empty() {
+                        *wn = name.to_string();
+                    } else if wn != name {
+                        panic!("somthing wrong");
+                    }
+                    ilog.join_or_create = Some(l.date);
+                }
+            }
+
+            if msg == "Successfully joined room" {
+                if let Some(ref mut ilog) = ilog {
+                    ilog.joined = Some(l.date);
+                }
+            }
+
             if msg == "Successfully left room" {
-                left = Some(l.date.clone());
-                v.push(ilog.unwrap());
+                if let Some(mut ilog) = ilog {
+                    ilog.left = Some(l.date);
+                    v.push(ilog);
+                }
                 ilog = None;
             }
         }

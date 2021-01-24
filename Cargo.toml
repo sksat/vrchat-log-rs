@@ -1,6 +1,6 @@
 [package]
 name = "vrchat-log"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["sksat <sksat@sksat.net>"]
 edition = "2018"
 license = "MIT"
@@ -12,6 +12,7 @@ description = "VRChat output log parser"
 repository = "https://github.com/sk2sat/vrchat-log-rs"
 
 [dependencies]
+chrono = "0.4.19"
 enum-as-inner = "0.3.3"
 strum = "0.20.0"
 strum_macros = "0.20.1"

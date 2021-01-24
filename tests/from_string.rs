@@ -1,3 +1,4 @@
+use chrono::{Datelike, Timelike};
 use vrchat_log::{log, Log, LogEnum};
 
 #[test]
@@ -50,25 +51,53 @@ VRC.SDKInternal.SDKWatcher.Start () (at <00000000000000000000000000000000>:0)
     let log = vrchat_log::from_str(log).unwrap();
     {
         let warn = log[0].as_warning().unwrap();
-        assert_eq!(warn.0, "2021.01.22 21:38:25");
+        let date = warn.0;
+        assert_eq!(date.year(), 2021);
+        assert_eq!(date.month(), 1);
+        assert_eq!(date.day(), 22);
+        assert_eq!(date.hour(), 21);
+        assert_eq!(date.minute(), 38);
+        assert_eq!(date.second(), 25);
+        let msg = warn.1;
+        assert_eq!(msg.len(), 1);
+        assert_eq!(
+            msg[0],
+            "OvrLipSync Awake: Queried SampleRate: 48000 BufferSize: 1024"
+        );
     }
     {
         let log = log[1].as_log().unwrap();
-        assert_eq!(log.date, "2021.01.22 21:38:25");
+        assert_eq!(log.date.year(), 2021);
+        assert_eq!(log.date.month(), 1);
+        assert_eq!(log.date.day(), 22);
+        assert_eq!(log.date.hour(), 21);
+        assert_eq!(log.date.minute(), 38);
+        assert_eq!(log.date.second(), 25);
         assert_eq!(log.typ, log::Type::AssetBundleDownloadManager);
         assert_eq!(log.msg.len(), 1);
         assert_eq!(log.msg[0], "Using default cache directory.");
     }
     {
         let log = log[4].as_log().unwrap();
-        assert_eq!(log.date, "2021.01.22 21:38:26");
+        assert_eq!(log.date.year(), 2021);
+        assert_eq!(log.date.month(), 1);
+        assert_eq!(log.date.day(), 22);
+        assert_eq!(log.date.hour(), 21);
+        assert_eq!(log.date.minute(), 38);
+        assert_eq!(log.date.second(), 26);
         assert_eq!(log.typ, log::Type::Message);
         assert_eq!(log.msg.len(), 1);
         assert_eq!(log.msg[0], "OpenVR initialized!");
     }
     {
         let log = log[6].as_log().unwrap();
-        assert_eq!(log.date, "2021.01.22 21:38:26");
+        assert_eq!(log.date.year(), 2021);
+        assert_eq!(log.date.month(), 1);
+        assert_eq!(log.date.day(), 22);
+        assert_eq!(log.date.hour(), 21);
+        assert_eq!(log.date.minute(), 38);
+        assert_eq!(log.date.second(), 26);
         assert_eq!(log.typ, log::Type::VRCApplicationSetup);
+        assert_eq!(log.msg.len(), 10);
     }
 }

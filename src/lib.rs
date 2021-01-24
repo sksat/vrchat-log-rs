@@ -1,5 +1,6 @@
 /// 2021.01.13 21:22:05 Log        -  [VRCApplicationSetup] System Info:
 /// <-------date------> <type>        <Log::VRCApplicationSetup> <message>
+use chrono::NaiveDateTime as DateTime;
 use enum_as_inner::EnumAsInner;
 
 pub mod log;
@@ -11,9 +12,9 @@ pub use world::{Instance, InstanceLog, InstanceLogList};
 #[derive(Debug, EnumAsInner)]
 pub enum LogEnum {
     Log(Log),
-    Warning { date: String, msg: Vec<String> },
-    Error { date: String, msg: Vec<String> },
-    Exception { date: String, msg: Vec<String> },
+    Warning { date: DateTime, msg: Vec<String> },
+    Error { date: DateTime, msg: Vec<String> },
+    Exception { date: DateTime, msg: Vec<String> },
     Unknown(String),
 }
 
@@ -39,6 +40,7 @@ impl LogEnum {
         }
 
         let date = s[0..19].to_string();
+        let date = DateTime::parse_from_str(&date, "%Y.%m.%d %H:%M:%S").unwrap();
         //println!("date: {}", date);
 
         let typ = &s[20..31].split_whitespace().next().unwrap();

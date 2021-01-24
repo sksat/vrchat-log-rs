@@ -1,15 +1,17 @@
 use std::str::FromStr;
 use strum_macros::EnumString;
 
+use crate::DateTime;
+
 #[derive(Debug)]
 pub struct Log {
-    pub date: String,
+    pub date: DateTime,
     pub typ: Type,
     pub msg: Vec<String>,
 }
 
 impl Log {
-    pub fn new(date: String, typ: Option<&str>, msg: Vec<String>) -> Self {
+    pub fn new(date: DateTime, typ: Option<&str>, msg: Vec<String>) -> Self {
         let typ = if let Some(typ) = typ {
             Type::from_str(typ).unwrap()
         } else {
