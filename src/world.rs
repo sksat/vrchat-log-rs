@@ -4,11 +4,11 @@ use crate::log;
 
 #[derive(Debug)]
 pub struct World {
-    pub name: String,
     pub id: String,
+    pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum InstanceType {
     Public,
     FriendPlus,
@@ -20,24 +20,80 @@ pub enum InstanceType {
 }
 
 #[derive(Debug)]
-pub struct InstanceLog(Vec<Instance>);
-
-#[derive(Debug)]
 pub struct Instance {
     pub world: World,
+    pub id: u32,
+    pub owner: Option<String>,
     pub typ: InstanceType,
+}
 
+#[derive(Debug)]
+pub struct InstanceLog {
+    pub instance: Instance,
     pub enter: Option<String>,
     pub join: Option<String>,
     pub join_or_create: Option<String>,
     pub left: Option<String>,
 }
 
-impl From<&Vec<crate::LogEnum>> for InstanceLog {
-    fn from(from: &Vec<crate::LogEnum>) -> InstanceLog {
+#[derive(Debug)]
+pub struct InstanceLogList(Vec<InstanceLog>);
+
+/// parse instance string like:
+/// wrld_f8ff20cd-5310-4257-ade8-c3fd6ae95436:98257~friends(usr_f8229b4f-794c-4a94-bf5d-d21f3fc0daf5)~nonce(1104791A7210A68C4AE6C869F9B8944FFE00AA9425AA349926F5EDDB93DCB297)
+pub fn parse_instance(s: &str) -> Result<Instance, ()> {
+    let s = s.strip_prefix("wrld_").unwrap();
+    let mut s: Vec<&str> = s.split(&[':', '~', '(', ')'][..]).collect();
+    s.retain(|w| !w.is_empty());
+    //println!("world: {:?}", s);
+
+    let world = World {
+        id: s[0].to_string(),
+        name: "".to_string(),
+    };
+    let id = s[1].parse().unwrap();
+
+    if s.len() == 2 {
+        return Ok(Instance {
+            world,
+            id,
+            owner: None,
+            typ: InstanceType::Public,
+        });
+    }
+
+    let owner = s[3].strip_prefix("usr_").map(|u| u.to_string());
+
+    let typ = match s[2] {
+        "private" => {
+            if s[4] == "canRequestInvite" {
+                InstanceType::InvitePlus
+            } else {
+                InstanceType::Invite
+            }
+        }
+        "friends" => InstanceType::Friends,
+        "hidden" => InstanceType::FriendPlus,
+        _ => InstanceType::Unknown,
+    };
+
+    Ok(Instance {
+        world,
+        id,
+        owner,
+        typ,
+    })
+}
+
+impl From<&Vec<crate::LogEnum>> for InstanceLogList {
+    fn from(from: &Vec<crate::LogEnum>) -> InstanceLogList {
         let mut v = Vec::new();
         let mut log = from.iter();
-        let mut inst = Instance::default();
+
+        let mut ilog: Option<InstanceLog> = None;
+        let mut world_name = None;
+        let mut enter = None;
+        let mut left = None;
         loop {
             let l = log.next();
             if l.is_none() {
@@ -58,13 +114,32 @@ impl From<&Vec<crate::LogEnum>> for InstanceLog {
             }
 
             if let Some(name) = msg.strip_prefix("Entering Room: ") {
-                inst.world.name = name.to_string();
-                inst.enter = Some(l.date.clone());
+                world_name = Some(name.to_string());
+                enter = Some(l.date.clone());
+                continue;
             }
+            if msg.starts_with("Joining wrld_") {
+                let msg = msg.strip_prefix("Joining ").unwrap();
+                let instance = parse_instance(msg).unwrap();
+                ilog = Some(InstanceLog {
+                    instance,
+                    enter: None,
+                    join: None,
+                    join_or_create: None,
+                    left: None,
+                });
+            }
+
             if msg == "Successfully left room" {
-                inst.left = Some(l.date.clone());
-                v.push(inst);
-                inst = Instance::default();
+                left = Some(l.date.clone());
+                v.push(ilog.unwrap());
+                ilog = None;
+            }
+        }
+        // no left
+        if let Some(ilog) = ilog {
+            if v.last().unwrap().instance.id != ilog.instance.id {
+                v.push(ilog);
             }
         }
 
@@ -72,30 +147,14 @@ impl From<&Vec<crate::LogEnum>> for InstanceLog {
     }
 }
 
-impl Default for Instance {
-    fn default() -> Self {
-        Self {
-            world: World {
-                name: "".to_string(),
-                id: "".to_string(),
-            },
-            typ: InstanceType::Unknown,
-            enter: None,
-            join: None,
-            join_or_create: None,
-            left: None,
-        }
-    }
-}
-
-impl Deref for InstanceLog {
-    type Target = Vec<Instance>;
+impl Deref for InstanceLogList {
+    type Target = Vec<InstanceLog>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
-impl Into<InstanceLog> for Vec<Instance> {
-    fn into(self) -> InstanceLog {
-        InstanceLog(self)
+impl Into<InstanceLogList> for Vec<InstanceLog> {
+    fn into(self) -> InstanceLogList {
+        InstanceLogList(self)
     }
 }

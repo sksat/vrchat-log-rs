@@ -6,7 +6,7 @@ pub mod log;
 pub mod world;
 
 pub use log::Log;
-pub use world::InstanceLog;
+pub use world::{Instance, InstanceLog, InstanceLogList};
 
 #[derive(Debug, EnumAsInner)]
 pub enum LogEnum {
