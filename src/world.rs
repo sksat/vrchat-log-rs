@@ -42,37 +42,52 @@ pub struct InstanceLog {
 #[derive(Debug)]
 pub struct InstanceLogList(Vec<InstanceLog>);
 
+#[derive(Debug)]
+pub enum InstanceParseError {
+    IdIsNotNumber(String),
+    InvalidElement(String),
+    UnknownElement(String),
+    Invalid(String),
+    InvalidReqInvite(InstanceType),
+}
+
 /// parse instance string like:
 /// wrld_f8ff20cd-5310-4257-ade8-c3fd6ae95436:98257~friends(usr_f8229b4f-794c-4a94-bf5d-d21f3fc0daf5)~nonce(1104791A7210A68C4AE6C869F9B8944FFE00AA9425AA349926F5EDDB93DCB297)
-pub fn parse_instance(s: &str) -> Result<Instance, ()> {
-    let s = s.strip_prefix("wrld_").unwrap();
-    //let mut s: Vec<&str> = s.split(&[':', '~', '(', ')'][..]).collect();
-    let mut s: Vec<&str> = s.split('~').collect();
-    s.retain(|w| !w.is_empty());
+pub fn parse_instance(s: &str) -> Result<Instance, InstanceParseError> {
+    let s = s
+        .strip_prefix("wrld_")
+        .ok_or(InstanceParseError::Invalid(s.to_string()))?;
+
+    // split element
+    let mut elem: Vec<&str> = s.split('~').collect();
+    elem.retain(|w| !w.is_empty());
 
     let mut typ = InstanceType::Unknown;
-    if s.len() == 1 {
+    if elem.len() == 1 {
+        // wrld_hogehgoe:id
         typ = InstanceType::Public;
     }
+    let mut it = elem.iter();
 
-    let mut s = s.iter();
-    //println!("world: {:?}", s);
-
-    let world = s.next().unwrap();
-    let world: Vec<&str> = world.split(':').collect();
-    assert_eq!(world.len(), 2);
-
-    let id = world[1].parse().unwrap();
+    // parse world id and instance number
+    let world = it
+        .next()
+        .ok_or(InstanceParseError::Invalid(s.to_string()))?;
+    let w: Vec<&str> = world.split(':').collect();
+    if w.len() != 2 {
+        Err(InstanceParseError::InvalidElement(world.to_string()))?
+    }
+    let id = w[1].parse().unwrap();
 
     let world = World {
-        id: world[0].to_string(),
+        id: w[0].to_string(),
         name: "".to_string(),
     };
 
     let mut owner = None;
     let mut nonce = None;
 
-    for e in s {
+    for e in it {
         if e.is_empty() {
             continue;
         }
@@ -87,10 +102,10 @@ pub fn parse_instance(s: &str) -> Result<Instance, ()> {
                     typ = match typ {
                         InstanceType::Unknown => InstanceType::InvitePlus, // launch from vrchat.com
                         InstanceType::Invite => InstanceType::InvitePlus,  // launch from app
-                        _ => panic!("something wrong"),
+                        _ => Err(InstanceParseError::InvalidReqInvite(typ))?,
                     };
                 }
-                _ => panic!("unknown: {}", e[0]),
+                _ => Err(InstanceParseError::UnknownElement(e[0].to_string()))?,
             };
             continue;
         }
@@ -117,7 +132,7 @@ pub fn parse_instance(s: &str) -> Result<Instance, ()> {
             "nonce" => {
                 nonce = Some(arg.to_string());
             }
-            _ => panic!("un"),
+            _ => Err(InstanceParseError::UnknownElement(e[0].to_string()))?,
         }
     }
 
