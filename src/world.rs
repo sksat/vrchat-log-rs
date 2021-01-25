@@ -26,6 +26,7 @@ pub struct Instance {
     pub id: u32,
     pub owner: Option<String>,
     pub typ: InstanceType,
+    pub nonce: Option<String>,
 }
 
 #[derive(Debug)]
@@ -45,45 +46,87 @@ pub struct InstanceLogList(Vec<InstanceLog>);
 /// wrld_f8ff20cd-5310-4257-ade8-c3fd6ae95436:98257~friends(usr_f8229b4f-794c-4a94-bf5d-d21f3fc0daf5)~nonce(1104791A7210A68C4AE6C869F9B8944FFE00AA9425AA349926F5EDDB93DCB297)
 pub fn parse_instance(s: &str) -> Result<Instance, ()> {
     let s = s.strip_prefix("wrld_").unwrap();
-    let mut s: Vec<&str> = s.split(&[':', '~', '(', ')'][..]).collect();
+    //let mut s: Vec<&str> = s.split(&[':', '~', '(', ')'][..]).collect();
+    let mut s: Vec<&str> = s.split('~').collect();
     s.retain(|w| !w.is_empty());
-    //println!("world: {:?}", s);
 
-    let world = World {
-        id: s[0].to_string(),
-        name: "".to_string(),
-    };
-    let id = s[1].parse().unwrap();
-
-    if s.len() == 2 {
-        return Ok(Instance {
-            world,
-            id,
-            owner: None,
-            typ: InstanceType::Public,
-        });
+    let mut typ = InstanceType::Unknown;
+    if s.len() == 1 {
+        typ = InstanceType::Public;
     }
 
-    let owner = s[3].strip_prefix("usr_").map(|u| u.to_string());
+    let mut s = s.iter();
+    //println!("world: {:?}", s);
 
-    let typ = match s[2] {
-        "private" => {
-            if s[4] == "canRequestInvite" {
-                InstanceType::InvitePlus
-            } else {
-                InstanceType::Invite
-            }
-        }
-        "friends" => InstanceType::Friends,
-        "hidden" => InstanceType::FriendPlus,
-        _ => InstanceType::Unknown,
+    let world = s.next().unwrap();
+    let world: Vec<&str> = world.split(':').collect();
+    assert_eq!(world.len(), 2);
+
+    let id = world[1].parse().unwrap();
+
+    let world = World {
+        id: world[0].to_string(),
+        name: "".to_string(),
     };
+
+    let mut owner = None;
+    let mut nonce = None;
+
+    for e in s {
+        if e.is_empty() {
+            continue;
+        }
+
+        //println!("{}", e);
+        let e: Vec<&str> = e.split('(').collect();
+
+        // no args
+        if e.len() == 1 {
+            match e[0] {
+                "canRequestInvite" => {
+                    typ = match typ {
+                        InstanceType::Unknown => InstanceType::InvitePlus, // launch from vrchat.com
+                        InstanceType::Invite => InstanceType::InvitePlus,  // launch from app
+                        _ => panic!("something wrong"),
+                    };
+                }
+                _ => panic!("unknown: {}", e[0]),
+            };
+            continue;
+        }
+
+        // has args
+        let arg = &e[1];
+        let arg = &arg[..arg.len() - 1];
+        match e[0] {
+            "private" => {
+                let o = arg.strip_prefix("usr_").unwrap();
+                owner = Some(o.to_string());
+                typ = InstanceType::Invite;
+            }
+            "hidden" => {
+                let o = arg.strip_prefix("usr_").unwrap();
+                owner = Some(o.to_string());
+                typ = InstanceType::FriendPlus;
+            }
+            "friends" => {
+                let o = arg.strip_prefix("usr_").unwrap();
+                owner = Some(o.to_string());
+                typ = InstanceType::Friends;
+            }
+            "nonce" => {
+                nonce = Some(arg.to_string());
+            }
+            _ => panic!("un"),
+        }
+    }
 
     Ok(Instance {
         world,
         id,
         owner,
         typ,
+        nonce,
     })
 }
 
@@ -163,7 +206,7 @@ impl From<&Vec<crate::LogEnum>> for InstanceLogList {
         }
         // no left
         if let Some(ilog) = ilog {
-            if v.last().unwrap().instance.id != ilog.instance.id {
+            if v.is_empty() || v.last().unwrap().instance.id != ilog.instance.id {
                 v.push(ilog);
             }
         }
